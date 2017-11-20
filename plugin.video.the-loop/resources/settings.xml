@@ -23,16 +23,16 @@
     <category label="30715">
       <setting label="30718" type="lsep"/>
       <setting label="30719" type="action" option="close"
-               action="RunPlugin(plugin://plugin.video.the-loop/?mode=clearCache)"/>
+               action="RunPlugin(plugin://plugin.video.jen/?mode=clearCache)"/>
       <setting label="30733" type="lsep"/>
       <!-- scraper settings -->
       <setting label="30734" type="action" option="close"
-               action="RunPlugin(plugin://plugin.video.the-loop/?mode=ScraperSettings)"/>
+               action="RunPlugin(plugin://plugin.video.jen/?mode=ScraperSettings)"/>
       <setting id="use_link_dialog"		label="30744"			type="bool"		default="false" />
       <setting id="link_fallthrough" label="30745" type="bool"	default="true" visible="eq(-1,true)"/>
       <setting label="30741" type="lsep"/>
       <setting label="30742" type="action" option="close"
-               action="RunPlugin(plugin://plugin.video.the-loop]/?mode=ResolverSettings)"/>
+               action="RunPlugin(plugin://plugin.video.jen/?mode=ResolverSettings)"/>
       <!-- filtering settings -->
       <setting label="30735" type="lsep"/>
       <setting id="allow_openload" label="30736" type="bool" default="false"/>
@@ -56,7 +56,7 @@
     <category label="30770">
       <!-- debugging and developer options -->
       <setting id="debug" type="bool" label="30758" default="false" visible="true"/>
-      <setting label="Cache Location" id="cache_folder" type="folder" default="special://profile/addon_data/plugin.video.the-loop/"/>
+      <setting label="Cache Location" id="cache_folder" type="folder" default="special://profile/addon_data/plugin.video.jen/"/>
     </category>
 
 
