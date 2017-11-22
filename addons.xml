@@ -28,6 +28,7 @@
           <video_preview>WdKIzajiBBI</video_preview>
         </extension>
 </addon>
+        
 <addon id="script.module.liveresolver" 
      name="LiveResolver" 
      version="0.1.49" 
