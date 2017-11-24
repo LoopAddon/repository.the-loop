@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
     sources.py ---
     Copyright (C) 2017, Midraal
@@ -29,11 +28,12 @@ from koding import route
 import sys
 import xbmcplugin
 
-
 from resources.lib.util.xml import JenItem, JenList
+from resources.lib.util.messages import get_link_message, get_searching_message
 from resources.lib.util.info import get_info
-
-addon_name = xbmcaddon.Addon().getAddonInfo('name')
+from resources.lib.player import JenPlayer
+from resources.lib.plugin import run_hook
+from language import get_string as _
 
 ADDON = xbmcaddon.Addon()
 DIALOG = xbmcgui.Dialog()
@@ -47,10 +47,23 @@ class Sources(object):
         pass
 
     @staticmethod
-    def get_sources(title, year, imdb, tvdb, season, episode, tvshowtitle,
-                    premiered, timeout=30, preset="search", dialog=None,
-                    exclude=None, scraper_title=False, listitem=None,
-                    output_function=koding.Play_Video, skip_selector=False):
+    def get_sources(title,
+                    year,
+                    imdb,
+                    tvdb,
+                    season,
+                    episode,
+                    tvshowtitle,
+                    premiered,
+                    timeout=30,
+                    preset="search",
+                    dialog=None,
+                    exclude=None,
+                    scraper_title=False,
+                    listitem=None,
+                    output_function=koding.Play_Video,
+                    skip_selector=False,
+                    player=None):
         """
         scrapes for video sources using NaN scraper library
         Args:
@@ -79,18 +92,30 @@ class Sources(object):
             # use link selector
             if content == 'movie':
                 scraper = nanscrapers.scrape_movie_with_dialog
-                link, rest = scraper(title, year, imdb, timeout=timeout,
-                                     exclude=exclude, extended=True,
-                                     sort_function=Sources.sort_function,
-                                     enable_debrid=allow_debrid)
+                link, rest = scraper(
+                    title,
+                    year,
+                    imdb,
+                    timeout=timeout,
+                    exclude=exclude,
+                    extended=True,
+                    sort_function=Sources.sort_function,
+                    enable_debrid=allow_debrid)
             elif content == "episode":
                 scraper = nanscrapers.scrape_episode_with_dialog
-                link, rest = scraper(tvshowtitle, year, premiered,
-                                     season, episode, imdb, tvdb,
-                                     timeout=timeout, exclude=exclude,
-                                     extended=True,
-                                     sort_function=Sources.sort_function,
-                                     enable_debrid=allow_debrid)
+                link, rest = scraper(
+                    tvshowtitle,
+                    year,
+                    premiered,
+                    season,
+                    episode,
+                    imdb,
+                    tvdb,
+                    timeout=timeout,
+                    exclude=exclude,
+                    extended=True,
+                    sort_function=Sources.sort_function,
+                    enable_debrid=allow_debrid)
             else:
                 return
 
@@ -114,7 +139,7 @@ class Sources(object):
                 while not played:
                     try:
                         if dialog is not None and dialog.iscanceled():
-                            return
+                            return False
                         if dialog is not None:
                             index = index + 1
                             percent = int((index * 100) / num_results)
@@ -122,33 +147,55 @@ class Sources(object):
                                                      link['source'],
                                                      link['quality'])
                             dialog.update(percent, line)
-                        played = output_function(url, showbusy=False,
-                                                 ignore_dp=True, item=listitem)
+                    except:
+                        pass
+                    try:
+                        played = output_function(
+                            link["url"],
+                            showbusy=False,
+                            ignore_dp=True,
+                            item=listitem,
+                            player=player)
                         link = links[0]
                         links = links[1:]
                     except:
                         return False
                 return played
             else:
-                return output_function(url, showbusy=False,
-                                       ignore_dp=True, item=listitem)
+                return output_function(
+                    url,
+                    showbusy=False,
+                    ignore_dp=True,
+                    item=listitem,
+                    player=player)
         else:
             if content == 'movie':
                 title = title
                 scraper = nanscrapers.scrape_movie
-                links_scraper = scraper(title, year, imdb, timeout=timeout,
-                                        exclude=exclude,
-                                        enable_debrid=allow_debrid)
+                links_scraper = scraper(
+                    title,
+                    year,
+                    imdb,
+                    timeout=timeout,
+                    exclude=exclude,
+                    enable_debrid=allow_debrid)
 
             elif content == 'episode':
                 if scraper_title:
                     tvshowtitle = title
                 tvshowtitle = tvshowtitle
                 scraper = nanscrapers.scrape_episode
-                links_scraper = scraper(tvshowtitle, year, premiered, season,
-                                        episode, imdb, tvdb, timeout=timeout,
-                                        exclude=exclude,
-                                        enable_debrid=allow_debrid)
+                links_scraper = scraper(
+                    tvshowtitle,
+                    year,
+                    premiered,
+                    season,
+                    episode,
+                    imdb,
+                    tvdb,
+                    timeout=timeout,
+                    exclude=exclude,
+                    enable_debrid=allow_debrid)
             else:
                 return
 
@@ -185,10 +232,12 @@ class Sources(object):
                                 sd_links.append(scraper_link)
 
                         if scraper_link["direct"]:
-                            result = output_function(scraper_link["url"],
-                                                     showbusy=False,
-                                                     ignore_dp=True,
-                                                     item=listitem)
+                            result = output_function(
+                                scraper_link["url"],
+                                showbusy=False,
+                                ignore_dp=True,
+                                item=listitem,
+                                player=player)
                             if result:
                                 return result
                         else:
@@ -197,8 +246,12 @@ class Sources(object):
             for scraper_link in non_direct_links:
                 if dialog is not None and dialog.iscanceled():
                     return False
-                result = output_function(scraper_link["url"], showbusy=False,
-                                         ignore_dp=True, item=listitem)
+                result = output_function(
+                    scraper_link["url"],
+                    showbusy=False,
+                    ignore_dp=True,
+                    item=listitem,
+                    player=player)
                 if result:
                     return result
 
@@ -207,9 +260,12 @@ class Sources(object):
                     return
 
                 if scraper_link['direct']:
-                    result = output_function(scraper_link["url"],
-                                             showbusy=False,
-                                             ignore_dp=True, item=listitem)
+                    result = output_function(
+                        scraper_link["url"],
+                        showbusy=False,
+                        ignore_dp=True,
+                        item=listitem,
+                        player=player)
                     if result:
                         return result
                 else:
@@ -218,8 +274,12 @@ class Sources(object):
             for scraper_link in non_direct_sd_links:
                 if dialog is not None and dialog.iscanceled():
                     return
-                result = output_function(scraper_link["url"], showbusy=False,
-                                         ignore_dp=True, item=listitem)
+                result = output_function(
+                    scraper_link["url"],
+                    showbusy=False,
+                    ignore_dp=True,
+                    item=listitem,
+                    player=player)
                 if result:
                     return result
 
@@ -228,9 +288,16 @@ class Sources(object):
             return False
 
     @staticmethod
-    def get_music_sources(title, artist, timeout=30, preset="search",
-                          dialog=None, exclude=None, listitem=None,
-                          output_function=koding.Play_Video):
+    def get_music_sources(title,
+                          artist,
+                          timeout=30,
+                          preset="search",
+                          dialog=None,
+                          exclude=None,
+                          listitem=None,
+                          output_function=koding.Play_Video,
+                          skip_selector=False,
+                          player=None):
         """
         scrapes for music sources using NaN scraper library
         Args:
@@ -245,55 +312,123 @@ class Sources(object):
         """
         title = title
         allow_debrid = ADDON.getSetting('allow_debrid') == "true"
+        if ADDON.getSetting('use_link_dialog') == 'true' and not skip_selector:
+            link, rest = nanscrapers.scrape_song_with_dialog(
+                title,
+                artist,
+                timeout=timeout,
+                exclude=exclude,
+                enable_debrid=allow_debrid,
+                extended=True)
+            if type(link) == dict and "path" in link:
+                link = link["path"]
+                if link is None:
+                    return False
+                url = link['url']
+                if ADDON.getSetting('link_fallthrough') == 'true':
+                    played = False
+                    index = 0
+                    links = []
+                    for item in rest:
+                        if type(item) == dict and "path" in item:
+                            links.extend(item["path"][1])
+                        else:
+                            links.extend(item[1])
+                    index = links.index(link)
+                    links = links[index + 1:]
+                    num_results = len(rest) + 1
+                    while not played:
+                        try:
+                            if dialog is not None and dialog.iscanceled():
+                                return
+                            if dialog is not None:
+                                index = index + 1
+                                percent = int((index * 100) / num_results)
+                                line = "%s - %s (%s)" % (link['scraper'],
+                                                         link['source'],
+                                                         link['quality'])
+                                dialog.update(percent, line)
+                        except:
+                            pass
+                        try:
+                            played = output_function(
+                                url,
+                                showbusy=False,
+                                ignore_dp=True,
+                                item=listitem,
+                                player=player)
+                            link = links[0]
+                            links = links[1:]
+                        except:
+                            return False
+                    return played
+                else:
+                    return output_function(
+                        url,
+                        showbusy=False,
+                        ignore_dp=True,
+                        item=listitem,
+                        player=player)
         links_scraper = nanscrapers.scrape_song(
-            title, artist, timeout=timeout, exclude=exclude,
+            title,
+            artist,
+            timeout=timeout,
+            exclude=exclude,
             enable_debrid=allow_debrid)
 
         sd_links = []
         num_scrapers = len(nanscrapers.relevant_scrapers())
         index = 0
-        for scraper_links in links_scraper():
-            if dialog is not None and dialog.iscanceled():
-                return
-            if dialog is not None:
-                index = index + 1
-                percent = int((index * 100) / num_scrapers)
-                dialog.update(percent)
-            if scraper_links is not None:
-                random.shuffle(scraper_links)
-                for scraper_link in scraper_links:
-                    if dialog is not None and dialog.iscanceled():
-                        return
+        try:
+            for scraper_links in links_scraper():
+                if dialog is not None and dialog.iscanceled():
+                    return
+                if dialog is not None:
+                    index = index + 1
+                    percent = int((index * 100) / num_scrapers)
+                    dialog.update(percent)
+                if scraper_links is not None:
+                    random.shuffle(scraper_links)
+                    for scraper_link in scraper_links:
+                        if dialog is not None and dialog.iscanceled():
+                            return
 
-                    if Sources().__check_skip_pairing(scraper_link):
-                        continue
-
-                    quality = Sources.__determine_quality(
-                        scraper_link["quality"])
-                    preset = preset.lower()
-                    if preset == 'searchsd':
-                        if quality == "HD":
+                        if Sources().__check_skip_pairing(scraper_link):
                             continue
-                    elif preset == "search":
-                        if quality == "SD":
-                            sd_links.append(scraper_link)
 
-                    result = output_function(scraper_link["url"],
-                                             showbusy=False,
-                                             ignore_dp=True,
-                                             item=listitem)
-                    if result:
-                        return result
+                        quality = Sources.__determine_quality(
+                            scraper_link["quality"])
+                        preset = preset.lower()
+                        if preset == 'searchsd':
+                            if quality == "HD":
+                                continue
+                        elif preset == "search":
+                            if quality == "SD":
+                                sd_links.append(scraper_link)
 
-        for scraper_link in sd_links:
-            if dialog is not None and dialog.iscanceled():
-                return
-            result = output_function(scraper_link["url"], showbusy=False,
-                                     ignore_dp=True, item=listitem)
-            if result:
-                return result
+                        result = output_function(
+                            scraper_link["url"],
+                            showbusy=False,
+                            ignore_dp=True,
+                            item=listitem,
+                            player=player)
+                        if result:
+                            return result
 
-            return False
+            for scraper_link in sd_links:
+                if dialog is not None and dialog.iscanceled():
+                    return
+                result = output_function(
+                    scraper_link["url"],
+                    showbusy=False,
+                    ignore_dp=True,
+                    item=listitem,
+                    player=player)
+                if result:
+                    return result
+        except:
+            pass
+        return False
 
     @staticmethod
     def youtube_resolve(url):
@@ -305,8 +440,8 @@ class Sources(object):
             playable url
         """
         try:
-            youtube_id = url.split(
-                '?v=')[-1].split('/')[-1].split('?')[0].split('&')[0]
+            youtube_id = url.split('?v=')[-1].split('/')[-1].split('?')[
+                0].split('&')[0]
             result = requests.head(
                 'http://www.youtube.com/watch?v=%s' % youtube_id)
             if result:
@@ -335,14 +470,18 @@ class Sources(object):
             quality = "HDb"
         elif quality.startswith("560"):
             quality = "HDc"
-        elif quality == "HD":
+        elif quality == "DVD":
             quality = "HDd"
+        elif quality == "HD":
+            quality = "HDe"
         elif quality.startswith("480"):
             quality = "SDa"
         elif quality.startswith("360"):
             quality = "SDb"
         elif quality.startswith("SD"):
             quality = "SDc"
+        else:
+            quality = "Z"
         return quality
 
     @staticmethod
@@ -392,6 +531,7 @@ def choose_quality(link, name=None, selected_link=None):
         if not sublinks:
             sublinks = [jen_link]
     links = []
+    message = get_link_message()
     if selected_link is None:
         default_link = ADDON.getSetting("default_link")
     else:
@@ -405,11 +545,15 @@ def choose_quality(link, name=None, selected_link=None):
             if default_link == "SD":
                 return sublink
             label = 'SD'
+            if message['SD'] != '':
+                label += ' (%s)' % message['SD']
             new_item = (label, sublink)
         elif "search" in sublink:
             if default_link == "HD":
                 return sublink
             label = 'HD'
+            if message['HD'] != '':
+                label += ' (%s)' % message['HD']
             new_item = (label, sublink)
         else:
             direct_links = True
@@ -442,6 +586,9 @@ def get_sources(item):
     Keyword Arguments:
     item -- JenItem to try playing
     """
+    result = run_hook("get_sources", item)
+    if result:
+        return
     if item.startswith("<plugin>"):
         # link to plugin
         link = JenItem(item)["link"]
@@ -452,7 +599,7 @@ def get_sources(item):
             else:
                 link = sublinks[0]
         link = link.replace("&amp;", "&")
-        xbmc.executebuiltin('Container.update('+link+')')
+        xbmc.executebuiltin('Container.update(' + link + ')')
         return
     item = JenItem(item)
 
@@ -461,8 +608,8 @@ def get_sources(item):
         return
     meta = JenItem(item["meta"])
     title = meta["title"]
-    year = meta["year"].split("-")[0].strip()
-    imdb = meta["imdb"]
+    year = meta.get("year", '').split("-")[0].strip()
+    imdb = meta.get("imdb", "")
     tvdb = meta.get("tvdb", "")
     season = meta.get("season", "")
     episode = meta.get("episode", "")
@@ -473,38 +620,71 @@ def get_sources(item):
     except:
         if len(premiered) == 4:
             pass
+        elif not premiered:
+            pass
         else:
-            xbmc.log("wrong premiered format")
+            koding.dolog("wrong premiered format")
     busy_dialog = xbmcgui.DialogProgress()
     dialog = xbmcgui.Dialog()
     icon = ADDON.getAddonInfo('icon')
 
-    busy_dialog.create(addon_name, "Processing Link")
+    jenplayer = JenPlayer(resume=False)
+    try:
+        spec = {
+            "identifier": imdb,
+            "season": season or "0",
+            "episode": episode or "0"
+        }
+        match = koding.Get_From_Table("watched", spec)
+        if match:
+            match = match[0]
+            if match["currentTime"] and not match["currentTime"] == "0":
+                if dialog.yesno(ADDON.getAddonInfo("name"),
+                                _("Previous playback detected"),
+                                yeslabel=_("Resume"),
+                                nolabel=_("Restart")):
+                    jenplayer = JenPlayer(resume=True)
+    except:
+        pass
+
+    jenplayer.setItem(item)
+
+    busy_dialog.create(xbmcaddon.Addon().getAddonInfo('name'),
+                       _("Processing Link"))
     preset = choose_quality(link)
+    message = get_searching_message(preset)
     played = False
     infolabels = {}
     if preset:
         preset = preset.replace("&amp;", "&")
-        busy_dialog.update(0, "")
+        busy_dialog.update(0, message)
         listitem = None
         fetch_meta = ADDON.getSetting("metadata") == "true"
-        listitem = xbmcgui.ListItem(path=link,
-                                    iconImage=item.get("thumbnail", icon),
-                                    thumbnailImage=item.get("thumbnail",
-                                                            icon))
-
+        listitem = xbmcgui.ListItem(
+            path=link,
+            iconImage=item.get("thumbnail", icon),
+            thumbnailImage=item.get("thumbnail", icon))
+        infolabels = {}
         if fetch_meta and imdb != "0":  # only try valid items with imdb
-            infolabels = {}
             try:
                 info, created = get_info([item.item_string])
                 if info and type(info) == dict:
                     infolabels = info
             except:
                 pass
+        else:
+            infolabels["title"] = title
+            infolabels["name"] = title
         if "plotoutline" not in infolabels:
             infolabels["plotoutline"] = infolabels.get("plot", "")
-        listitem.setInfo(type="video", infoLabels=infolabels)
-        listitem.setLabel(item.get("title", item.get("name", "")))
+        if item.get("content", "") == "song":
+            listitem.setInfo(type='Music',
+                             infoLabels={'title': meta.get("title", ""),
+                                         'artist': meta.get("artist", "")})
+        else:
+            listitem.setInfo(type="video", infoLabels=infolabels)
+            listitem.setLabel(item.get("title", item.get("name", "")))
+
         if "search" in preset:
             exclude_scrapers_content = item.get("exclude_scrapers", "")
             if exclude_scrapers_content:
@@ -512,19 +692,34 @@ def get_sources(item):
             else:
                 exclude_scrapers = None
             # nanscraper link
-            played = Sources.get_sources(
-                title, year, imdb, tvdb, season, episode, tvshowtitle,
-                premiered, preset=preset, dialog=busy_dialog,
-                listitem=listitem, exclude=exclude_scrapers)
-            if not played:
-                dialog.notification(addon_name,
-                                    "no link found",
-                                    icon, 5)
+            if item.get("content", "") == "song":
+                artist = item.get("artist", "")
+                played = Sources.get_music_sources(title, artist,
+                                                   preset=preset,
+                                                   dialog=busy_dialog,
+                                                   exclude=exclude_scrapers,
+                                                   listitem=listitem,
+                                                   player=jenplayer)
+            else:
+                played = Sources.get_sources(
+                    title,
+                    year,
+                    imdb,
+                    tvdb,
+                    season,
+                    episode,
+                    tvshowtitle,
+                    premiered,
+                    preset=preset,
+                    dialog=busy_dialog,
+                    listitem=listitem,
+                    exclude=exclude_scrapers,
+                    player=jenplayer)
         elif preset.startswith("http") or preset.startswith("plugin"):
             # direct link
-            if "/playlist" in preset:
+            if "/playlist" in preset and "youtube" in preset:
                 busy_dialog.close()
-                xbmc.executebuiltin('Container.update('+preset+')')
+                xbmc.executebuiltin('Container.update(' + preset + ')')
                 return
             elif "plugin://plugin.video.youtube/play/?video_id=" in preset:
                 xbmc.executebuiltin("PlayMedia(%s)" % preset)
@@ -535,22 +730,19 @@ def get_sources(item):
                 played = True
             else:
                 played = koding.Play_Video(
-                    preset, showbusy=False, ignore_dp=True, item=listitem)
-            if not played:
-                dialog.notification(addon_name,
-                                    "no link found",
-                                    icon, 5)
+                    preset,
+                    showbusy=False,
+                    ignore_dp=True,
+                    item=listitem,
+                    player=jenplayer)
         else:
             # who knows
             busy_dialog.close()
-            xbmc.log("unknown link type: " + repr(preset), xbmc.LOGDEBUG)
+            koding.dolog("unknown link type: " + repr(preset))
             raise Exception()
     busy_dialog.close()
     if played:
-        is_playing = True
-        while is_playing:
-            is_playing = xbmc.Player().isPlaying()
-            xbmc.sleep(1000)
+        jenplayer.keep_alive()
 
 
 @route(mode="queue", args=["url"])
@@ -568,9 +760,10 @@ def queue_source(item, depth=0):
         if xbmcaddon.Addon().getSetting("autostart_queue") == "true":
             if playlist.size() == 0:
                 play = True
-        playlist.add(get_addon_url("get_sources", str(item)),
-                     xbmcgui.ListItem(jen_item["title"],
-                                      iconImage=jen_item.get("thumbnail", "")))
+        playlist.add(
+            get_addon_url("get_sources", str(item)),
+            xbmcgui.ListItem(
+                jen_item["title"], iconImage=jen_item.get("thumbnail", "")))
         if play:
             play_queue()
     else:
@@ -579,18 +772,18 @@ def queue_source(item, depth=0):
         for list_item in jenlist:
             queue_source(str(list_item), depth + 1)
     if depth == 0:
-        xbmcgui.Dialog().notification(addon_name,
-                                      "Finished Queueing".encode('utf-8'),
-                                      ADDON.getAddonInfo("icon"))
+        xbmcgui.Dialog().notification(
+            ADDON.getAddonInfo("name"), _("Finished Queueing").encode('utf-8'),
+            ADDON.getAddonInfo("icon"))
         xbmc.executebuiltin("Container.Refresh")
 
 
 @route(mode="clear_queue")
 def clear_queue():
     xbmc.PlayList(xbmc.PLAYLIST_VIDEO).clear()
-    xbmcgui.Dialog().notification(ADDON.getAddonInfo("name"),
-                                  "Queue cleared".encode('utf-8'),
-                                  ADDON.getAddonInfo("icon"))
+    xbmcgui.Dialog().notification(
+        ADDON.getAddonInfo("name"), _("Queue cleared").encode('utf-8'),
+        ADDON.getAddonInfo("icon"))
     xbmc.executebuiltin('Container.Refresh')
 
 
@@ -602,8 +795,9 @@ def play_queue():
         xbmc.Player().play(playlist, item)
         xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, item)
     else:
-        xbmcgui.Dialog().notification(ADDON.getAddonInfo("name"),
-                                      "Queue is empty".encode('utf-8'),
-                                      ADDON.getAddonInfo("icon"))
+        xbmcgui.Dialog().notification(
+            ADDON.getAddonInfo("name"), _("Queue is empty").encode('utf-8'),
+            ADDON.getAddonInfo("icon"))
+
 
 #  LocalWords:  searchsd HD
