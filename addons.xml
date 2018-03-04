@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addons>
 <addon id="plugin.video.the-loop" name="The Loop" version="1.1" provider-name="Munkee">
     <requires>
@@ -22,8 +23,6 @@
           <summary lang="en">The Loop</summary>
           <description lang="en">The Loop is a Sports addon made with the Jen template which is derived from BOB. Powered by Jen. </description>
           <platform>all</platform>
-          <forum></forum>
-                  <platform>all</platform>
           <forum></forum>
           <website></website>
           <video_guide></video_guide>
@@ -93,4 +92,4 @@
     <platform>all</platform>
   </extension>
 </addon>
-</addons>      
+</addons>
